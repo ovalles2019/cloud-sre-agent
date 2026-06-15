@@ -48,6 +48,8 @@ python app.py
 
 Open **http://localhost:8080** and click **Run agent analysis**. The demo mode uses realistic synthetic telemetry — no AWS credentials required.
 
+**Live demo:** Deploy to [Render](https://render.com) via the included `render.yaml` Blueprint, or use the one-click deploy link in the repo after pushing to GitHub.
+
 ### Live AWS mode
 
 ```bash
@@ -118,6 +120,12 @@ cloud-sre-agent/
 
 ---
 
-## License
+## Deploy to Render
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ovalles2019/cloud-sre-agent)
+
+Or connect the repo manually in the [Render Dashboard](https://dashboard.render.com) — `render.yaml` at the repo root defines the web service, health check, and demo-mode env vars.
+
+---
 
 MIT
