@@ -126,6 +126,8 @@ cloud-sre-agent/
 
 **Live demo URL:** `https://cloud-sre-agent.onrender.com` (after Blueprint deploy)
 
+**Portfolio:** Listed on [oscar-valles.com](https://www.oscar-valles.com/) · [GitHub profile](https://github.com/ovalles2019)
+
 See **[docs/DEPLOY.md](docs/DEPLOY.md)** for:
 - Wiring AWS IAM credentials in the Render dashboard
 - Switching from demo → live Bedrock + CloudWatch + Cost Explorer
