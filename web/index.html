@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud SRE Agent — Cost & Reliability Control Plane</title>
+<meta name="description" content="Autonomous AWS cost and reliability agent with Bedrock reasoning, CloudWatch telemetry, Cost Explorer analysis, and human-in-the-loop remediation approvals.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+    <img src="/favicon.svg" alt="">
+    <span>Cloud SRE Agent<small>Bedrock · CloudWatch · Cost Explorer</small></span>
+  </div>
+  <div class="spacer"></div>
+  <a class="navlink" href="#dashboard">Dashboard</a>
+  <a class="navlink" href="#incidents">Incidents</a>
+  <a class="navlink" href="#approvals">Approvals</a>
+  <a class="navlink" href="#trace">Agent Trace</a>
+  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">connecting</span></div>
+</nav>
+
+<div class="wrap">
+
+  <header class="hero" id="dashboard">
+    <div>
+      <div class="eyebrow">Autonomous FinOps + Reliability</div>
+      <h1>Your AWS estate, <span class="grad">reasoned over</span> and remediated safely.</h1>
+      <p class="lead">Bedrock Agent correlates CloudWatch anomalies, Cost Explorer drift, and Trusted Advisor flags — then proposes remediation with a mandatory human approval gate before any write action executes.</p>
+      <div class="cta">
+        <button class="btn primary" id="runBtn">▶ Run agent analysis</button>
+        <button class="btn" id="refreshBtn">↻ Refresh dashboard</button>
+      </div>
+      <div class="pill-row">
+        <div class="pill"><b id="pillMode">demo</b> mode</div>
+        <div class="pill"><b id="pillServices">4</b> services monitored</div>
+        <div class="pill"><b id="pillAlarms">—</b> active alarms</div>
+        <div class="pill">HITL gate <b>enabled</b></div>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <h3>Platform health</h3>
+      <div class="score-ring" id="healthRing" data-score="—" style="--score: 72"></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="k">MTD spend</div><div class="v" id="mtdSpend">—</div></div>
+        <div class="stat"><div class="k">Cost delta</div><div class="v" id="costDelta">—</div></div>
+        <div class="stat"><div class="k">Open incidents</div><div class="v" id="openIncidents">—</div></div>
+        <div class="stat"><div class="k">Pending approvals</div><div class="v" id="pendingApprovals">—</div></div>
+      </div>
+    </div>
+  </header>
+
+  <section class="grid-3">
+    <div class="panel">
+      <div class="panel-head"><h2>Cost by service</h2><span>MTD · USD</span></div>
+      <div class="panel-body chart-box"><canvas id="costChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Reliability signals</h2><span>24h sparklines</span></div>
+      <div class="panel-body chart-box"><canvas id="signalChart"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>Architecture</h2><span>Bedrock Agent flow</span></div>
+      <div class="panel-body" style="font-size:13px;color:var(--muted);line-height:1.7">
+        <p style="margin-bottom:10px"><strong style="color:var(--text)">Collect</strong> → Lambda action groups query CloudWatch, Cost Explorer, Trusted Advisor.</p>
+        <p style="margin-bottom:10px"><strong style="color:var(--text)">Reason</strong> → Bedrock correlates multi-signal anomalies and drafts RCA + actions.</p>
+        <p style="margin-bottom:10px"><strong style="color:var(--text)">Gate</strong> → Write actions enter approval queue; reads execute immediately.</p>
+        <p><strong style="color:var(--text)">Remediate</strong> → Approved actions invoke remediation Lambda with audit token.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="layout-2" id="incidents">
+    <div class="panel">
+      <div class="panel-head"><h2>Incident reports</h2><span id="incidentCount">0</span></div>
+      <div class="panel-body" id="incidentList"><div class="empty">Run analysis to generate an incident report.</div></div>
+    </div>
+
+    <div class="panel" id="approvals">
+      <div class="panel-head"><h2>Approval queue</h2><span>Human-in-the-loop</span></div>
+      <div class="panel-body" id="approvalList"><div class="empty">No pending write actions.</div></div>
+    </div>
+  </section>
+
+  <section class="panel" id="trace" style="margin-top:16px">
+    <div class="panel-head"><h2>Agent execution trace</h2><span>Bedrock + action groups</span></div>
+    <div class="panel-body">
+      <div class="trace" id="traceLog"><div class="empty">Agent trace will appear after analysis.</div></div>
+    </div>
+  </section>
+
+  <footer>Cloud SRE Agent · Bedrock Agents + Lambda action groups · Demo-ready locally, deploy via CDK</footer>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
