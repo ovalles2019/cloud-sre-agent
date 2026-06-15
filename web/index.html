@@ -2,104 +2,331 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cloud SRE Agent — Cost & Reliability Control Plane</title>
-<meta name="description" content="Autonomous AWS cost and reliability agent with Bedrock reasoning, CloudWatch telemetry, Cost Explorer analysis, and human-in-the-loop remediation approvals.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nexus SRE — Cloud Cost & Reliability Agent</title>
+<meta name="description" content="Autonomous AWS cost and reliability agent with Bedrock reasoning and human-in-the-loop remediation.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/styles.css?v=3">
 </head>
 <body>
 
-<nav>
-  <div class="brand">
+<div class="mesh" aria-hidden="true"></div>
+<div class="scanline" aria-hidden="true"></div>
+
+<!-- Mobile drawer -->
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-brand">
     <img src="/favicon.svg" alt="">
-    <span>Cloud SRE Agent<small>Bedrock · CloudWatch · Cost Explorer</small></span>
+    <span>Nexus SRE</span>
   </div>
-  <div class="spacer"></div>
-  <a class="navlink" href="#dashboard">Dashboard</a>
-  <a class="navlink" href="#incidents">Incidents</a>
-  <a class="navlink" href="#approvals">Approvals</a>
-  <a class="navlink" href="#trace">Agent Trace</a>
-  <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">connecting</span></div>
+  <nav class="drawer-nav">
+    <a href="#command" class="nav-item active" data-section="command">Command</a>
+    <a href="#telemetry" class="nav-item" data-section="telemetry">Telemetry</a>
+    <a href="#incidents" class="nav-item" data-section="incidents">Incidents</a>
+    <a href="#approvals" class="nav-item" data-section="approvals">Approvals</a>
+    <a href="#trace" class="nav-item" data-section="trace">Agent trace</a>
+  </nav>
+</aside>
+
+<!-- Top bar -->
+<header class="topbar">
+  <button class="icon-btn menu-btn" id="menuBtn" aria-label="Open menu">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+  </button>
+  <div class="topbar-brand">
+    <img src="/favicon.svg" alt="">
+    <div>
+      <strong>Nexus SRE</strong>
+      <small id="brandSub">Autonomous control plane</small>
+    </div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="mode-chip" id="modeChip">
+    <span class="mode-dot"></span>
+    <span id="pillMode">demo</span>
+  </div>
+  <div class="status-pill">
+    <span class="pulse-dot" id="statusDot"></span>
+    <span id="statusText">connecting</span>
+  </div>
+</header>
+
+<!-- Desktop sidebar -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <img src="/favicon.svg" alt="">
+    <div>
+      <strong>Nexus</strong>
+      <small>SRE Agent</small>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <a href="#command" class="nav-item active" data-section="command">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Command
+    </a>
+    <a href="#telemetry" class="nav-item" data-section="telemetry">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 17v-4M8 17V7M13 17v-6M18 17V3"/></svg>
+      Telemetry
+    </a>
+    <a href="#incidents" class="nav-item" data-section="incidents">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+      Incidents
+      <span class="nav-badge" id="navIncidents">0</span>
+    </a>
+    <a href="#approvals" class="nav-item" data-section="approvals">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Approvals
+      <span class="nav-badge warn" id="navApprovals">0</span>
+    </a>
+    <a href="#trace" class="nav-item" data-section="trace">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      Agent trace
+    </a>
+  </nav>
+  <div class="sidebar-foot">
+    <div class="pipeline-mini" id="pipelineMini">
+      <div class="pm-step done">Collect</div>
+      <div class="pm-line"></div>
+      <div class="pm-step">Reason</div>
+      <div class="pm-line"></div>
+      <div class="pm-step">Gate</div>
+      <div class="pm-line"></div>
+      <div class="pm-step">Act</div>
+    </div>
+  </div>
+</aside>
+
+<main class="main">
+
+  <!-- COMMAND -->
+  <section class="section" id="command">
+    <div class="section-head">
+      <div>
+        <p class="kicker">Command center</p>
+        <h1>Cloud estate under <em>autonomous</em> watch.</h1>
+      </div>
+      <div class="head-actions">
+        <button class="btn ghost" id="refreshBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7M21 3v6h-6"/></svg>
+          Refresh
+        </button>
+        <button class="btn primary glow" id="runBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <span>Run analysis</span>
+          <span class="btn-shimmer"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="bento">
+      <!-- Health orb -->
+      <div class="tile tile-hero glass">
+        <div class="tile-label">Platform health</div>
+        <div class="health-orb-wrap">
+          <svg class="health-orb" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" class="orb-track"/>
+            <circle cx="60" cy="60" r="52" class="orb-fill" id="orbFill"/>
+          </svg>
+          <div class="orb-center">
+            <span class="orb-score" id="healthScore">—</span>
+            <span class="orb-unit">score</span>
+          </div>
+        </div>
+        <div class="health-bar">
+          <div class="health-bar-fill" id="healthBar"></div>
+        </div>
+      </div>
+
+      <!-- KPI tiles -->
+      <div class="tile kpi glass">
+        <div class="kpi-icon spend">$</div>
+        <div class="kpi-body">
+          <span class="kpi-label">MTD spend</span>
+          <span class="kpi-value" id="mtdSpend">—</span>
+          <span class="kpi-delta" id="costDelta">—</span>
+        </div>
+      </div>
+      <div class="tile kpi glass">
+        <div class="kpi-icon alert">!</div>
+        <div class="kpi-body">
+          <span class="kpi-label">Open incidents</span>
+          <span class="kpi-value" id="openIncidents">—</span>
+          <span class="kpi-sub" id="pillAlarms">— alarms</span>
+        </div>
+      </div>
+      <div class="tile kpi glass">
+        <div class="kpi-icon gate">✓</div>
+        <div class="kpi-body">
+          <span class="kpi-label">Pending approvals</span>
+          <span class="kpi-value" id="pendingApprovals">—</span>
+          <span class="kpi-sub">HITL gate active</span>
+        </div>
+      </div>
+      <div class="tile kpi glass">
+        <div class="kpi-icon svc">◈</div>
+        <div class="kpi-body">
+          <span class="kpi-label">Services</span>
+          <span class="kpi-value" id="pillServices">4</span>
+          <span class="kpi-sub">monitored</span>
+        </div>
+      </div>
+
+      <!-- Agent pipeline -->
+      <div class="tile tile-wide glass">
+        <div class="tile-label">Agent pipeline</div>
+        <div class="pipeline" id="pipeline">
+          <div class="pipe-step" data-step="collect">
+            <div class="pipe-icon">01</div>
+            <div class="pipe-text">
+              <strong>Collect</strong>
+              <span>CloudWatch · Cost Explorer · TA</span>
+            </div>
+          </div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step" data-step="reason">
+            <div class="pipe-icon">02</div>
+            <div class="pipe-text">
+              <strong>Reason</strong>
+              <span>Bedrock multi-signal RCA</span>
+            </div>
+          </div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step" data-step="gate">
+            <div class="pipe-icon">03</div>
+            <div class="pipe-text">
+              <strong>Gate</strong>
+              <span>Human approval for writes</span>
+            </div>
+          </div>
+          <div class="pipe-arrow">→</div>
+          <div class="pipe-step" data-step="act">
+            <div class="pipe-icon">04</div>
+            <div class="pipe-text">
+              <strong>Remediate</strong>
+              <span>Lambda action groups</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live feed -->
+      <div class="tile tile-feed glass" id="liveFeed">
+        <div class="tile-label">Live feed</div>
+        <ul class="feed" id="feedList">
+          <li class="feed-item muted">Awaiting agent activity…</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- TELEMETRY -->
+  <section class="section" id="telemetry">
+    <div class="section-head compact">
+      <div>
+        <p class="kicker">Telemetry</p>
+        <h2>Cost & reliability signals</h2>
+      </div>
+    </div>
+    <div class="chart-grid">
+      <div class="tile glass chart-tile">
+        <div class="tile-label">Cost by service · MTD USD</div>
+        <div class="chart-wrap"><canvas id="costChart"></canvas></div>
+      </div>
+      <div class="tile glass chart-tile">
+        <div class="tile-label">24h signal sparklines</div>
+        <div class="chart-wrap"><canvas id="signalChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INCIDENTS -->
+  <section class="section" id="incidents">
+    <div class="section-head compact">
+      <div>
+        <p class="kicker">Incidents</p>
+        <h2>Agent-generated reports</h2>
+      </div>
+      <span class="count-badge" id="incidentCount">0</span>
+    </div>
+    <div class="card-stack" id="incidentList">
+      <div class="empty-state">
+        <div class="empty-icon">◎</div>
+        <p>No incidents yet</p>
+        <span>Run analysis to generate your first report</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- APPROVALS -->
+  <section class="section" id="approvals">
+    <div class="section-head compact">
+      <div>
+        <p class="kicker">Approval queue</p>
+        <h2>Human-in-the-loop gate</h2>
+      </div>
+    </div>
+    <div class="card-stack" id="approvalList">
+      <div class="empty-state">
+        <div class="empty-icon">✓</div>
+        <p>Queue clear</p>
+        <span>Write actions will appear here for approval</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRACE -->
+  <section class="section" id="trace">
+    <div class="section-head compact">
+      <div>
+        <p class="kicker">Execution trace</p>
+        <h2>Bedrock + action groups</h2>
+      </div>
+    </div>
+    <div class="trace-panel glass" id="traceLog">
+      <div class="empty-state inline">
+        <p>Agent trace will appear after analysis</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    Nexus SRE Agent · Bedrock · Lambda action groups ·
+    <a href="https://github.com/ovalles2019/cloud-sre-agent" target="_blank" rel="noopener">GitHub</a>
+  </footer>
+</main>
+
+<!-- Toast container -->
+<div class="toasts" id="toasts"></div>
+
+<!-- Mobile bottom nav -->
+<nav class="bottom-nav" aria-label="Mobile navigation">
+  <a href="#command" class="bn-item active" data-section="command">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+    Command
+  </a>
+  <a href="#incidents" class="bn-item" data-section="incidents">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    Incidents
+  </a>
+  <button class="bn-fab" id="runBtnMobile" aria-label="Run analysis">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+  </button>
+  <a href="#approvals" class="bn-item" data-section="approvals">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/></svg>
+    Approvals
+  </a>
+  <a href="#trace" class="bn-item" data-section="trace">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/></svg>
+    Trace
+  </a>
 </nav>
 
-<div class="wrap">
-
-  <header class="hero" id="dashboard">
-    <div>
-      <div class="eyebrow">Autonomous FinOps + Reliability</div>
-      <h1>Your AWS estate, <span class="grad">reasoned over</span> and remediated safely.</h1>
-      <p class="lead">Bedrock Agent correlates CloudWatch anomalies, Cost Explorer drift, and Trusted Advisor flags — then proposes remediation with a mandatory human approval gate before any write action executes.</p>
-      <div class="cta">
-        <button class="btn primary" id="runBtn">▶ Run agent analysis</button>
-        <button class="btn" id="refreshBtn">↻ Refresh dashboard</button>
-      </div>
-      <div class="pill-row">
-        <div class="pill"><b id="pillMode">demo</b> mode</div>
-        <div class="pill"><b id="pillServices">4</b> services monitored</div>
-        <div class="pill"><b id="pillAlarms">—</b> active alarms</div>
-        <div class="pill">HITL gate <b>enabled</b></div>
-      </div>
-    </div>
-
-    <div class="hero-card">
-      <h3>Platform health</h3>
-      <div class="score-ring" id="healthRing" data-score="—" style="--score: 72"></div>
-      <div class="stat-grid">
-        <div class="stat"><div class="k">MTD spend</div><div class="v" id="mtdSpend">—</div></div>
-        <div class="stat"><div class="k">Cost delta</div><div class="v" id="costDelta">—</div></div>
-        <div class="stat"><div class="k">Open incidents</div><div class="v" id="openIncidents">—</div></div>
-        <div class="stat"><div class="k">Pending approvals</div><div class="v" id="pendingApprovals">—</div></div>
-      </div>
-    </div>
-  </header>
-
-  <section class="grid-3">
-    <div class="panel">
-      <div class="panel-head"><h2>Cost by service</h2><span>MTD · USD</span></div>
-      <div class="panel-body chart-box"><canvas id="costChart"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Reliability signals</h2><span>24h sparklines</span></div>
-      <div class="panel-body chart-box"><canvas id="signalChart"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="panel-head"><h2>Architecture</h2><span>Bedrock Agent flow</span></div>
-      <div class="panel-body" style="font-size:13px;color:var(--muted);line-height:1.7">
-        <p style="margin-bottom:10px"><strong style="color:var(--text)">Collect</strong> → Lambda action groups query CloudWatch, Cost Explorer, Trusted Advisor.</p>
-        <p style="margin-bottom:10px"><strong style="color:var(--text)">Reason</strong> → Bedrock correlates multi-signal anomalies and drafts RCA + actions.</p>
-        <p style="margin-bottom:10px"><strong style="color:var(--text)">Gate</strong> → Write actions enter approval queue; reads execute immediately.</p>
-        <p><strong style="color:var(--text)">Remediate</strong> → Approved actions invoke remediation Lambda with audit token.</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="layout-2" id="incidents">
-    <div class="panel">
-      <div class="panel-head"><h2>Incident reports</h2><span id="incidentCount">0</span></div>
-      <div class="panel-body" id="incidentList"><div class="empty">Run analysis to generate an incident report.</div></div>
-    </div>
-
-    <div class="panel" id="approvals">
-      <div class="panel-head"><h2>Approval queue</h2><span>Human-in-the-loop</span></div>
-      <div class="panel-body" id="approvalList"><div class="empty">No pending write actions.</div></div>
-    </div>
-  </section>
-
-  <section class="panel" id="trace" style="margin-top:16px">
-    <div class="panel-head"><h2>Agent execution trace</h2><span>Bedrock + action groups</span></div>
-    <div class="panel-body">
-      <div class="trace" id="traceLog"><div class="empty">Agent trace will appear after analysis.</div></div>
-    </div>
-  </section>
-
-  <footer>Cloud SRE Agent · Bedrock Agents + Lambda action groups · Demo-ready locally, deploy via CDK</footer>
-</div>
-
-<script src="/static/app.js"></script>
+<script src="/static/app.js?v=3"></script>
 </body>
 </html>
