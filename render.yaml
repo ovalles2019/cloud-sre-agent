@@ -11,18 +11,26 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.6"
-      - key: DEMO_MODE
-        value: "true"
       - key: ENVIRONMENT
         value: "prod"
-      - key: USE_LOCAL_STORE
-        value: "true"
       - key: REQUIRE_APPROVAL_FOR_WRITES
         value: "true"
-      # Optional: set in Render dashboard for live AWS telemetry + Bedrock reasoning
+      - key: AWS_REGION
+        value: "us-east-1"
+      # Demo mode by default. Set DEMO_MODE=false + AWS creds below for live telemetry.
+      - key: DEMO_MODE
+        value: "true"
+      - key: USE_LOCAL_STORE
+        value: "true"
+      # --- Live AWS (set in Render Dashboard → Environment) ---
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
-      - key: AWS_REGION
-        value: "us-east-1"
+      - key: BEDROCK_MODEL_ID
+        value: "anthropic.claude-3-5-sonnet-20241022-v2:0"
+      - key: DYNAMODB_INCIDENTS_TABLE
+        value: "cloud-sre-incidents"
+      - key: DYNAMODB_APPROVALS_TABLE
+        value: "cloud-sre-approvals"
+      # RENDER_EXTERNAL_URL is injected automatically by Render

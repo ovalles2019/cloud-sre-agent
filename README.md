@@ -124,7 +124,12 @@ cloud-sre-agent/
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/ovalles2019/cloud-sre-agent)
 
-Or connect the repo manually in the [Render Dashboard](https://dashboard.render.com) — `render.yaml` at the repo root defines the web service, health check, and demo-mode env vars.
+**Live demo URL:** `https://cloud-sre-agent.onrender.com` (after Blueprint deploy)
+
+See **[docs/DEPLOY.md](docs/DEPLOY.md)** for:
+- Wiring AWS IAM credentials in the Render dashboard
+- Switching from demo → live Bedrock + CloudWatch + Cost Explorer
+- Optional DynamoDB persistence via CDK
 
 ---
 

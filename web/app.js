@@ -230,8 +230,12 @@ async function decideApproval(id, decision) {
 async function boot() {
   try {
     const health = await api("/healthz");
-    $("pillMode").textContent = health.demo_mode ? "demo" : "live";
-    setStatus("live", "connected");
+    $("pillMode").textContent = health.runtime || (health.demo_mode ? "demo" : "live");
+    if (health.public_url) {
+      document.querySelector(".brand small").textContent =
+        health.runtime === "live-aws" ? "Live AWS · Bedrock" : "Demo · Render";
+    }
+    setStatus("live", health.runtime === "live-aws" ? "live aws" : "connected");
     await loadDashboard();
     await loadApprovals();
   } catch (err) {

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
@@ -50,10 +51,14 @@ app.add_middleware(
 
 @app.get("/healthz")
 def healthz() -> dict:
+    has_aws = bool(os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
     return {
         "status": "ok",
         "environment": settings.environment,
+        "runtime": settings.runtime_label,
         "demo_mode": settings.demo_mode,
+        "aws_configured": has_aws,
+        "public_url": settings.public_base_url or None,
         "bedrock_model": settings.bedrock_model_id,
     }
 
