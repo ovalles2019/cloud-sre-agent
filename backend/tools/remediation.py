@@ -41,7 +41,11 @@ class RemediationTool:
                 "aws_request_id": "demo-req-001",
             }
 
-        return self._execute_live(tool_name, parameters)
+        try:
+            return self._execute_live(tool_name, parameters)
+        except Exception as exc:  # noqa: BLE001
+            log.exception("live_remediation_failed", tool=tool_name)
+            return {"ok": False, "tool": tool_name, "error": str(exc)}
 
     def _execute_live(self, tool_name: str, parameters: dict[str, Any]) -> dict[str, Any]:
         import boto3
@@ -53,6 +57,36 @@ class RemediationTool:
                 AutoScalingGroupName=parameters["asg_name"],
                 DesiredCapacity=int(parameters["desired_capacity"]),
             )
+            return {"ok": True, "response_metadata": resp.get("ResponseMetadata", {})}
+
+        if tool_name == "rightsize_ec2":
+            ec2 = boto3.client("ec2", region_name=region)
+            resp = ec2.stop_instances(InstanceIds=list(parameters["instance_ids"]))
+            return {"ok": True, "stopping": resp.get("StoppingInstances", [])}
+
+        if tool_name == "rollback_lambda":
+            client = boto3.client("lambda", region_name=region)
+            target = parameters.get("target_version")
+            if not target:
+                return {"ok": False, "error": "target_version is required for live Lambda rollback"}
+            resp = client.update_alias(
+                FunctionName=parameters["function_name"],
+                Name=parameters.get("alias", "live"),
+                FunctionVersion=str(target),
+            )
+            return {"ok": True, "alias": resp.get("Name"), "version": resp.get("FunctionVersion")}
+
+        if tool_name == "increase_rds_capacity":
+            rds = boto3.client("rds", region_name=region)
+            kwargs: dict[str, Any] = {
+                "DBInstanceIdentifier": parameters["db_instance_id"],
+                "ApplyImmediately": True,
+            }
+            if parameters.get("instance_class"):
+                kwargs["DBInstanceClass"] = parameters["instance_class"]
+            if parameters.get("allocated_storage"):
+                kwargs["AllocatedStorage"] = int(parameters["allocated_storage"])
+            resp = rds.modify_db_instance(**kwargs)
             return {"ok": True, "response_metadata": resp.get("ResponseMetadata", {})}
 
         if tool_name == "create_budget_alert":

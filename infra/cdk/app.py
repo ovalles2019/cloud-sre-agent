@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """AWS CDK stack for Cloud SRE Agent infrastructure."""
 
+from pathlib import Path
+
 from aws_cdk import (
     App,
     CfnOutput,
@@ -38,12 +40,13 @@ class CloudSreAgentStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
+        lambda_dir = Path(__file__).resolve().parents[2] / "lambdas" / "action_groups"
         action_fn = lambda_.Function(
             self,
             "ActionGroupHandler",
             runtime=lambda_.Runtime.PYTHON_3_12,
             handler="handler.handler",
-            code=lambda_.Code.from_asset("../lambdas/action_groups"),
+            code=lambda_.Code.from_asset(str(lambda_dir)),
             timeout=Duration.seconds(30),
             environment={
                 "APPROVALS_TABLE": approvals.table_name,
@@ -61,7 +64,12 @@ class CloudSreAgentStack(Stack):
                     "support:DescribeTrustedAdvisorCheckResult",
                     "autoscaling:SetDesiredCapacity",
                     "lambda:UpdateAlias",
-                    "budgets:CreateBudget",
+                    "lambda:GetAlias",
+                    "budgets:ModifyBudget",
+                    "budgets:ViewBudget",
+                    "ec2:StopInstances",
+                    "ec2:DescribeInstances",
+                    "rds:ModifyDBInstance",
                 ],
                 resources=["*"],
             )

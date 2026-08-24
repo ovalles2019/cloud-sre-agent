@@ -322,6 +322,7 @@ body {
 .section {
   margin-bottom: 48px;
   scroll-margin-top: calc(var(--topbar-h) + 16px);
+  scroll-margin-bottom: calc(var(--bottom-nav-h) + 24px);
 }
 
 .section-head {
@@ -866,6 +867,7 @@ h1 em {
   background: linear-gradient(135deg, rgba(255, 176, 32, 0.06), rgba(255, 107, 74, 0.04));
   padding: 18px;
   animation: card-in 0.45s var(--ease) both;
+  scroll-margin-bottom: calc(var(--bottom-nav-h) + 24px);
 }
 
 .approval-card h3 {
@@ -1086,7 +1088,7 @@ h1 em {
 
   .main {
     margin-left: 0;
-    padding: calc(var(--topbar-h) + 16px) 16px calc(var(--bottom-nav-h) + 16px);
+    padding: calc(var(--topbar-h) + 16px) 16px calc(var(--bottom-nav-h) + 48px);
   }
 
   .bottom-nav { display: flex; }

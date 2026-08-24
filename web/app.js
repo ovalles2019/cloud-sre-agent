@@ -24,6 +24,15 @@ function fmtUsd(n) {
   return "$" + Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function animateValue(el, end, duration = 900, prefix = "", suffix = "") {
   if (!el) return;
   const start = parseFloat(el.dataset.val || "0") || 0;
@@ -69,7 +78,7 @@ function addFeed(msg, type = "info") {
   const el = $("feedList");
   if (!el) return;
   el.innerHTML = feedItems
-    .map((f) => `<li class="feed-item ${f.type}">${f.msg}</li>`)
+    .map((f) => `<li class="feed-item ${escapeHtml(f.type)}">${escapeHtml(f.msg)}</li>`)
     .join("");
 }
 
@@ -80,7 +89,7 @@ function setStatus(state, text) {
 }
 
 function sevTag(sev) {
-  return `<span class="tag ${sev}">${sev}</span>`;
+  return `<span class="tag ${escapeHtml(sev)}">${escapeHtml(sev)}</span>`;
 }
 
 async function api(path, opts = {}) {
@@ -138,7 +147,7 @@ function renderHealth(data) {
   }
   if (bar) bar.style.width = score + "%";
 
-  animateValue($("mtdSpend"), data.mtd_spend_usd, 800, "$", "");
+  $("mtdSpend").textContent = fmtUsd(data.mtd_spend_usd);
   const deltaEl = $("costDelta");
   const delta = data.cost_delta_pct;
   if (deltaEl) {
@@ -266,22 +275,22 @@ function renderIncidents(incidents) {
         .map(
           (a) => `
         <div class="action-item">
-          <span class="risk ${a.risk}">${a.risk}</span>
-          <span>${a.title}</span>
+          <span class="risk ${escapeHtml(a.risk)}">${escapeHtml(a.risk)}</span>
+          <span>${escapeHtml(a.title)}</span>
         </div>`
         )
         .join("");
 
       return `
-      <article class="incident-card ${isOpen ? "expanded" : ""}" data-id="${inc.incident_id}" style="animation-delay:${idx * 60}ms">
-        <div class="incident-head" data-toggle="${inc.incident_id}">
-          <div class="sev-indicator ${inc.severity}"></div>
+      <article class="incident-card ${isOpen ? "expanded" : ""}" data-id="${escapeHtml(inc.incident_id)}" style="animation-delay:${idx * 60}ms">
+        <div class="incident-head" data-toggle="${escapeHtml(inc.incident_id)}">
+          <div class="sev-indicator ${escapeHtml(inc.severity)}"></div>
           <div class="incident-body">
-            <h3>${inc.title}</h3>
-            <p>${inc.summary}</p>
+            <h3>${escapeHtml(inc.title)}</h3>
+            <p>${escapeHtml(inc.summary)}</p>
             <div class="incident-meta">
               ${sevTag(inc.severity)}
-              <span class="tag">${inc.status.replace(/_/g, " ")}</span>
+              <span class="tag">${escapeHtml(inc.status.replace(/_/g, " "))}</span>
               <span class="tag">${inc.metric_anomalies?.length || 0} metric</span>
               <span class="tag">${inc.cost_anomalies?.length || 0} cost</span>
             </div>
@@ -292,7 +301,7 @@ function renderIncidents(incidents) {
           <div class="incident-detail-inner">
             <div class="rca-block">
               <strong>Root cause hypothesis</strong>
-              ${inc.root_cause_hypothesis || "—"}
+              ${escapeHtml(inc.root_cause_hypothesis || "—")}
             </div>
             ${actions ? `<div class="action-list">${actions}</div>` : ""}
           </div>
@@ -332,13 +341,13 @@ function renderApprovals(approvals) {
   el.innerHTML = pending
     .map(
       (a, idx) => `
-    <div class="approval-card" data-id="${a.approval_id}" style="animation-delay:${idx * 80}ms">
-      <h3>${a.action.title}</h3>
-      <p>${a.action.description}</p>
-      <div class="approval-meta">tool: ${a.action.tool_name} · ${a.action.estimated_impact || "impact TBD"}</div>
+    <div class="approval-card" data-id="${escapeHtml(a.approval_id)}" style="animation-delay:${idx * 80}ms">
+      <h3>${escapeHtml(a.action.title)}</h3>
+      <p>${escapeHtml(a.action.description)}</p>
+      <div class="approval-meta">tool: ${escapeHtml(a.action.tool_name)} · ${escapeHtml(a.action.estimated_impact || "impact TBD")}</div>
       <div class="approval-actions">
-        <button class="btn ok sm" data-decision="approved" data-id="${a.approval_id}">Approve & execute</button>
-        <button class="btn danger sm" data-decision="rejected" data-id="${a.approval_id}">Reject</button>
+        <button class="btn ok sm" data-decision="approved" data-id="${escapeHtml(a.approval_id)}">Approve & execute</button>
+        <button class="btn danger sm" data-decision="rejected" data-id="${escapeHtml(a.approval_id)}">Reject</button>
       </div>
     </div>`
     )
@@ -362,8 +371,8 @@ function renderTrace(steps) {
       (s, idx) => `
     <div class="trace-step" style="animation-delay:${idx * 70}ms">
       <span class="trace-num">${String(s.step).padStart(2, "0")}</span>
-      <span class="trace-phase">${s.phase.replace(/_/g, " ")}</span>
-      <span class="trace-summary">${s.summary}</span>
+      <span class="trace-phase">${escapeHtml(s.phase.replace(/_/g, " "))}</span>
+      <span class="trace-summary">${escapeHtml(s.summary)}</span>
       <span class="trace-ms">${s.duration_ms}ms</span>
     </div>`
     )
@@ -424,8 +433,8 @@ async function runAnalysis() {
       ...all.filter((i) => i.incident_id !== result.incident.incident_id),
     ].slice(0, 8));
     renderTrace(result.incident.agent_trace);
-    renderApprovals(result.approval_requests);
     await loadDashboard();
+    await loadApprovals();
 
     setStatus("live", "analysis complete");
     toast(`Incident created · ${result.approval_requests.length} approvals pending`);
@@ -541,7 +550,11 @@ async function boot() {
     const health = await api("/healthz");
     $("pillMode").textContent = health.runtime || (health.demo_mode ? "demo" : "live");
     $("brandSub").textContent =
-      health.runtime === "live-aws" ? "Live AWS · Bedrock" : "Demo · Render";
+      health.runtime === "live-aws"
+        ? "Live AWS · Bedrock"
+        : health.environment === "local"
+          ? "Demo · local"
+          : "Demo · Render";
     setStatus("live", health.runtime === "live-aws" ? "live aws" : "online");
     addFeed(`Connected · ${health.runtime} mode`, "ok");
     await loadDashboard();

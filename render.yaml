@@ -28,7 +28,7 @@ services:
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
       - key: BEDROCK_MODEL_ID
-        value: "anthropic.claude-3-5-sonnet-20241022-v2:0"
+        value: "us.anthropic.claude-sonnet-4-6"
       - key: DYNAMODB_INCIDENTS_TABLE
         value: "cloud-sre-incidents"
       - key: DYNAMODB_APPROVALS_TABLE

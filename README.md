@@ -16,7 +16,7 @@
              │                               │
     ┌────────▼────────┐              ┌───────▼────────┐
     │ Bedrock Reasoner │              │ Approval Gate  │
-    │ (Claude 3.5)     │              │ (HITL writes)  │
+    │ (Claude Sonnet)  │              │ (HITL writes)  │
     └────────┬────────┘              └───────┬────────┘
              │                               │
     ┌────────▼───────────────────────────────▼────────────────────────┐
@@ -46,7 +46,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open **http://localhost:8080** and click **Run agent analysis**. The demo mode uses realistic synthetic telemetry — no AWS credentials required.
+Open **http://localhost:8080** (or **http://localhost:8081** if 8080 is already in use) and click **Run analysis**. The demo mode uses realistic synthetic telemetry — no AWS credentials required.
 
 **Live demo:** Deploy to [Render](https://render.com) via the included `render.yaml` Blueprint, or use the one-click deploy link in the repo after pushing to GitHub.
 

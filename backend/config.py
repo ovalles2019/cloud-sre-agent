@@ -16,9 +16,10 @@ class Settings(BaseSettings):
     app_name: str = "Cloud SRE Agent"
     environment: Literal["local", "dev", "prod"] = "local"
     aws_region: str = "us-east-1"
+    aws_profile: str = ""
 
     # Bedrock
-    bedrock_model_id: str = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    bedrock_model_id: str = "us.anthropic.claude-sonnet-4-6"
     bedrock_agent_id: str = ""
     bedrock_agent_alias_id: str = ""
 
@@ -44,7 +45,13 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def resolve_runtime_mode(self) -> Settings:
-        has_aws_creds = bool(os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+        if self.aws_profile:
+            os.environ["AWS_PROFILE"] = self.aws_profile
+
+        has_aws_creds = bool(
+            (os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
+            or self.aws_profile
+        )
         demo_env = os.environ.get("DEMO_MODE", "").lower()
 
         if demo_env == "false" or (has_aws_creds and demo_env not in {"true", "1", "yes"}):

@@ -23,8 +23,9 @@ from backend.models.schemas import (
 )
 from backend.services.approval import ApprovalService
 from backend.store.repository import get_store
-from backend.tools.demo_data import demo_sparklines
+from backend.tools.cloudwatch import CloudWatchTool
 from backend.tools.cost_explorer import CostExplorerTool
+from backend.tools.demo_data import demo_sparklines
 
 ROOT = Path(__file__).resolve().parents[1]
 WEB = ROOT / "web"
@@ -34,6 +35,18 @@ store = get_store(settings)
 orchestrator = SREAgentOrchestrator(settings, store)
 approval_service = ApprovalService(settings, store)
 cost_tool = CostExplorerTool(settings)
+cloudwatch_tool = CloudWatchTool(settings)
+
+
+def _aws_configured() -> bool:
+    if os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"):
+        return True
+    try:
+        import boto3
+
+        return boto3.Session().get_credentials() is not None
+    except Exception:  # noqa: BLE001
+        return False
 
 app = FastAPI(
     title=settings.app_name,
@@ -51,13 +64,12 @@ app.add_middleware(
 
 @app.get("/healthz")
 def healthz() -> dict:
-    has_aws = bool(os.environ.get("AWS_ACCESS_KEY_ID") and os.environ.get("AWS_SECRET_ACCESS_KEY"))
     return {
         "status": "ok",
         "environment": settings.environment,
         "runtime": settings.runtime_label,
         "demo_mode": settings.demo_mode,
-        "aws_configured": has_aws,
+        "aws_configured": _aws_configured(),
         "public_url": settings.public_base_url or None,
         "bedrock_model": settings.bedrock_model_id,
     }
@@ -71,6 +83,7 @@ def dashboard() -> DashboardSnapshot:
     open_count = store.open_incident_count()
     pending = store.pending_approval_count()
     health = max(0.0, min(100.0, 100 - open_count * 12 - pending * 8))
+    active_alarms = sum(1 for a in cloudwatch_tool.get_active_alarms() if a.get("state") == "ALARM")
 
     return DashboardSnapshot(
         generated_at=datetime.now(timezone.utc),
@@ -79,7 +92,7 @@ def dashboard() -> DashboardSnapshot:
         pending_approvals=pending,
         mtd_spend_usd=round(mtd, 2),
         cost_delta_pct=round(delta, 1),
-        active_alarms=2 if settings.demo_mode else 0,
+        active_alarms=active_alarms,
         services_monitored=settings.monitored_services.split(","),
         recent_incidents=incidents,
         cost_by_service=cost_tool.get_cost_by_service(),

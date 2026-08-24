@@ -39,7 +39,7 @@ Save the `AccessKeyId` and `SecretAccessKey` from the output.
 
 | Service | Requirement |
 |---------|-------------|
-| **Bedrock** | Enable Claude 3.5 Sonnet in Bedrock console (us-east-1) |
+| **Bedrock** | Use Claude Sonnet 4.6 via inference profile `us.anthropic.claude-sonnet-4-6` (us-east-1). Claude 3.5 Sonnet is retired. |
 | **Cost Explorer** | Enable in Billing → Cost Explorer (takes ~24h first time) |
 | **Trusted Advisor** | Requires Business or Enterprise Support plan |
 | **DynamoDB** | Optional — deploy CDK stack for persistent incidents |

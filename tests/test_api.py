@@ -32,9 +32,53 @@ def test_analyze_creates_incident():
 def test_approval_flow():
     r = client.post("/v1/agent/analyze", json={})
     approvals = r.json()["approval_requests"]
-    if not approvals:
-        return
+    assert approvals, "demo analysis should queue write actions for HITL approval"
     apr_id = approvals[0]["approval_id"]
+    incident_id = r.json()["incident"]["incident_id"]
+
     d = client.post(f"/v1/approvals/{apr_id}/decide", json={"decision": "approved", "decided_by": "test"})
     assert d.status_code == 200
     assert d.json()["status"] in {"executed", "failed", "approved"}
+
+    incident = client.get(f"/v1/incidents/{incident_id}").json()
+    remaining = [a for a in client.get("/v1/approvals").json() if a["status"] == "pending"]
+    if remaining:
+        assert incident["status"] == "remediating"
+    else:
+        assert incident["status"] in {"resolved", "remediating"}
+
+
+def test_partial_approval_does_not_resolve_incident():
+    r = client.post("/v1/agent/analyze", json={})
+    approvals = r.json()["approval_requests"]
+    assert len(approvals) >= 2
+    incident_id = r.json()["incident"]["incident_id"]
+
+    first = client.post(
+        f"/v1/approvals/{approvals[0]['approval_id']}/decide",
+        json={"decision": "approved", "decided_by": "test"},
+    )
+    assert first.status_code == 200
+    assert first.json()["status"] == "executed"
+
+    incident = client.get(f"/v1/incidents/{incident_id}").json()
+    assert incident["status"] == "remediating"
+    pending = [a for a in client.get("/v1/approvals").json() if a["status"] == "pending"]
+    assert pending
+
+
+def test_reject_all_dismisses_incident():
+    r = client.post("/v1/agent/analyze", json={})
+    approvals = r.json()["approval_requests"]
+    incident_id = r.json()["incident"]["incident_id"]
+
+    for approval in approvals:
+        d = client.post(
+            f"/v1/approvals/{approval['approval_id']}/decide",
+            json={"decision": "rejected", "decided_by": "test"},
+        )
+        assert d.status_code == 200
+        assert d.json()["status"] == "rejected"
+
+    incident = client.get(f"/v1/incidents/{incident_id}").json()
+    assert incident["status"] == "dismissed"

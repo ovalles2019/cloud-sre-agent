@@ -34,7 +34,7 @@
       "Effect": "Allow",
       "Action": [
         "bedrock:InvokeModel",
-        "bedrock:Converse"
+        "bedrock:InvokeModelWithResponseStream"
       ],
       "Resource": "*"
     },
@@ -46,10 +46,12 @@
         "autoscaling:DescribeAutoScalingGroups",
         "lambda:UpdateAlias",
         "lambda:GetAlias",
-        "budgets:CreateBudget",
+        "budgets:ModifyBudget",
+        "budgets:ViewBudget",
         "cloudwatch:PutMetricAlarm",
         "ec2:StopInstances",
-        "ec2:DescribeInstances"
+        "ec2:DescribeInstances",
+        "rds:ModifyDBInstance"
       ],
       "Resource": "*"
     },

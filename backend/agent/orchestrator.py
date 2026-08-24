@@ -289,21 +289,30 @@ class SREAgentOrchestrator:
         incident_id = new_id("inc")
         actions: list[RecommendedAction] = []
         for idx, raw in enumerate(analysis.get("recommended_actions", [])):
+            if not isinstance(raw, dict) or not raw.get("title") or not raw.get("tool_name"):
+                continue
+            try:
+                risk = ActionRisk(str(raw.get("risk", "read")).lower())
+            except ValueError:
+                risk = ActionRisk.READ
             actions.append(
                 RecommendedAction(
                     action_id=f"act_{idx+1}",
-                    title=raw["title"],
-                    description=raw["description"],
-                    risk=ActionRisk(raw.get("risk", "read")),
-                    tool_name=raw["tool_name"],
-                    parameters=raw.get("parameters", {}),
-                    estimated_impact=raw.get("estimated_impact", ""),
-                    rollback_plan=raw.get("rollback_plan", ""),
+                    title=str(raw["title"]),
+                    description=str(raw.get("description", "")),
+                    risk=risk,
+                    tool_name=str(raw["tool_name"]),
+                    parameters=raw.get("parameters") if isinstance(raw.get("parameters"), dict) else {},
+                    estimated_impact=str(raw.get("estimated_impact", "")),
+                    rollback_plan=str(raw.get("rollback_plan", "")),
                 )
             )
 
         has_write = any(a.risk == ActionRisk.WRITE for a in actions)
-        severity = Severity(analysis.get("severity", "warning"))
+        try:
+            severity = Severity(str(analysis.get("severity", "warning")).lower())
+        except ValueError:
+            severity = Severity.WARNING
 
         incident = IncidentReport(
             incident_id=incident_id,

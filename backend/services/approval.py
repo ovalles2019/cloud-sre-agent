@@ -67,6 +67,7 @@ class ApprovalService:
         if decision.decision == "rejected":
             approval.status = ApprovalStatus.REJECTED
             self.store.save_approval(approval)
+            self._refresh_incident_status(approval.incident_id)
             return approval
 
         approval.status = ApprovalStatus.APPROVED
@@ -78,12 +79,30 @@ class ApprovalService:
             approval.status = ApprovalStatus.EXECUTED if result.get("ok") else ApprovalStatus.FAILED
             self.store.save_approval(approval)
 
-            incident = self.store.get_incident(approval.incident_id)
-            if incident:
-                incident.status = (
-                    IncidentStatus.RESOLVED if approval.status == ApprovalStatus.EXECUTED else IncidentStatus.REMEDIATING
-                )
-                incident.updated_at = now
-                self.store.save_incident(incident)
-
+        self._refresh_incident_status(approval.incident_id)
         return approval
+
+    def _refresh_incident_status(self, incident_id: str) -> None:
+        incident = self.store.get_incident(incident_id)
+        if incident is None:
+            return
+
+        related = self.store.list_approvals(incident_id=incident_id)
+        pending = [a for a in related if a.status == ApprovalStatus.PENDING]
+        executed = [a for a in related if a.status == ApprovalStatus.EXECUTED]
+        failed = [a for a in related if a.status == ApprovalStatus.FAILED]
+        rejected = [a for a in related if a.status == ApprovalStatus.REJECTED]
+
+        if pending:
+            incident.status = (
+                IncidentStatus.REMEDIATING if (executed or failed) else IncidentStatus.AWAITING_APPROVAL
+            )
+        elif failed:
+            incident.status = IncidentStatus.REMEDIATING
+        elif executed:
+            incident.status = IncidentStatus.RESOLVED
+        elif rejected:
+            incident.status = IncidentStatus.DISMISSED
+
+        incident.updated_at = datetime.now(timezone.utc)
+        self.store.save_incident(incident)
