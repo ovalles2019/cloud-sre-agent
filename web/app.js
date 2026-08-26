@@ -10,13 +10,13 @@ let lastReasoner = "";
 const ORB_CIRC = 327;
 
 const chartDefaults = {
-  grid: "rgba(255,255,255,0.04)",
-  tick: "#8b8b9e",
-  teal: "#00ffd5",
-  violet: "#7c6bff",
-  coral: "#ff6b4a",
-  amber: "#ffb020",
-  ok: "#3dffab",
+  grid: "rgba(244,241,234,0.05)",
+  tick: "#9a958c",
+  teal: "#c9b89a",
+  violet: "#b7b3c7",
+  coral: "#d9897a",
+  amber: "#c9a66b",
+  ok: "#8fbfa8",
 };
 
 /* ── Utilities ── */
@@ -36,24 +36,27 @@ function escapeHtml(value) {
 
 function animateValue(el, end, duration = 900, prefix = "", suffix = "") {
   if (!el) return;
-  const start = parseFloat(el.dataset.val || "0") || 0;
-  const diff = end - start;
+  const target = Number(end);
+  if (!Number.isFinite(target)) return;
+  const isInt = Math.abs(target % 1) < 0.001;
+  const format = (n) => prefix + (isInt ? Math.round(n) : Number(n).toFixed(1)) + suffix;
+  const start = Number.parseFloat(el.dataset.val || "0") || 0;
+  const diff = target - start;
   if (Math.abs(diff) < 0.01) {
-    el.textContent = prefix + (Number.isInteger(end) ? end : end.toFixed(1)) + suffix;
-    el.dataset.val = end;
+    el.textContent = format(target);
+    el.dataset.val = String(target);
     return;
   }
   const t0 = performance.now();
   const step = (now) => {
     const p = Math.min((now - t0) / duration, 1);
     const eased = 1 - Math.pow(1 - p, 3);
-    const cur = start + diff * eased;
-    el.textContent =
-      prefix +
-      (Number.isInteger(end) ? Math.round(cur) : cur.toFixed(1)) +
-      suffix;
+    el.textContent = format(start + diff * eased);
     if (p < 1) requestAnimationFrame(step);
-    else el.dataset.val = end;
+    else {
+      el.textContent = format(target);
+      el.dataset.val = String(target);
+    }
   };
   requestAnimationFrame(step);
 }
@@ -227,8 +230,8 @@ function renderCostChart(byService) {
   if (costChart) costChart.destroy();
 
   const grad = ctx.createLinearGradient(0, 0, 0, 240);
-  grad.addColorStop(0, "rgba(0, 255, 213, 0.7)");
-  grad.addColorStop(1, "rgba(124, 107, 255, 0.4)");
+  grad.addColorStop(0, "rgba(201, 184, 154, 0.75)");
+  grad.addColorStop(1, "rgba(183, 179, 199, 0.25)");
 
   costChart = new Chart(ctx, {
     type: "bar",
@@ -250,11 +253,11 @@ function renderCostChart(byService) {
       plugins: { legend: { display: false } },
       scales: {
         x: {
-          ticks: { color: chartDefaults.tick, font: { family: "JetBrains Mono", size: 10 } },
+          ticks: { color: chartDefaults.tick, font: { family: "IBM Plex Mono", size: 10 } },
           grid: { display: false },
         },
         y: {
-          ticks: { color: chartDefaults.tick, font: { family: "JetBrains Mono", size: 10 } },
+          ticks: { color: chartDefaults.tick, font: { family: "IBM Plex Mono", size: 10 } },
           grid: { color: chartDefaults.grid },
         },
       },
