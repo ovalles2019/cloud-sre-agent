@@ -5,6 +5,7 @@ let signalChart = null;
 let latestIncident = null;
 let expandedIncident = null;
 let feedItems = [];
+let lastReasoner = "";
 
 const ORB_CIRC = 327;
 
@@ -88,6 +89,44 @@ function setStatus(state, text) {
   $("statusText").textContent = text;
 }
 
+function reasonerFromIncident(inc) {
+  const tag = (inc?.tags || []).find((t) => String(t).startsWith("reasoner:"));
+  return tag ? tag.split(":")[1] : "";
+}
+
+function setReasonerChip(reasoner) {
+  lastReasoner = reasoner || lastReasoner;
+  const chip = $("reasonerChip");
+  const label = $("reasonerLabel");
+  const pipe = $("pipeReasonSub");
+  if (!chip || !label) return;
+  if (reasoner === "bedrock") {
+    chip.dataset.kind = "bedrock";
+    label.textContent = "Claude";
+    if (pipe) pipe.textContent = "Claude on Bedrock";
+  } else if (reasoner === "rules_engine") {
+    chip.dataset.kind = "rules";
+    label.textContent = "Rules";
+    if (pipe) pipe.textContent = "Deterministic rules engine";
+  } else {
+    chip.dataset.kind = "";
+    label.textContent = "Idle";
+  }
+}
+
+function setAttentionBanner(pendingCount) {
+  const banner = $("attnBanner");
+  const title = $("attnTitle");
+  if (!banner || !title) return;
+  if (pendingCount > 0) {
+    banner.classList.remove("hidden");
+    title.textContent =
+      pendingCount === 1 ? "1 write waiting on you" : `${pendingCount} writes waiting on you`;
+  } else {
+    banner.classList.add("hidden");
+  }
+}
+
 function sevTag(sev) {
   return `<span class="tag ${escapeHtml(sev)}">${escapeHtml(sev)}</span>`;
 }
@@ -159,9 +198,24 @@ function renderHealth(data) {
   $("pillAlarms").textContent = data.active_alarms + " alarms";
   $("pillServices").textContent = data.services_monitored.length;
 
+  const caption = $("healthCaption");
+  if (caption) {
+    if (data.pending_approvals > 0) {
+      caption.textContent = "Degraded by HITL queue — decisions pending";
+    } else if (score >= 80) {
+      caption.textContent = "Healthy — no blocking operator work";
+    } else if (score >= 50) {
+      caption.textContent = "Watch — open incidents need review";
+    } else {
+      caption.textContent = "Stressed — multiple open issues";
+    }
+  }
+
   $("navIncidents").textContent = data.open_incidents;
   $("navApprovals").textContent = data.pending_approvals;
   $("incidentCount").textContent = data.recent_incidents.length;
+  const fromInc = reasonerFromIncident(data.recent_incidents[0]);
+  if (fromInc) setReasonerChip(fromInc);
 }
 
 /* ── Charts ── */
@@ -263,7 +317,7 @@ function renderIncidents(incidents) {
       <div class="empty-state">
         <div class="empty-icon">◎</div>
         <p>No incidents yet</p>
-        <span>Run analysis to generate your first report</span>
+        <span>Run analysis to collect telemetry and draft an RCA</span>
       </div>`;
     return;
   }
@@ -281,9 +335,15 @@ function renderIncidents(incidents) {
         )
         .join("");
 
+      const reasoner = reasonerFromIncident(inc);
+      const reasonerTag = reasoner
+        ? `<span class="tag">${escapeHtml(reasoner === "bedrock" ? "Claude" : "rules")}</span>`
+        : "";
+      const writes = (inc.recommended_actions || []).filter((a) => a.risk === "write").length;
+
       return `
       <article class="incident-card ${isOpen ? "expanded" : ""}" data-id="${escapeHtml(inc.incident_id)}" style="animation-delay:${idx * 60}ms">
-        <div class="incident-head" data-toggle="${escapeHtml(inc.incident_id)}">
+        <div class="incident-head" data-toggle="${escapeHtml(inc.incident_id)}" role="button" tabindex="0" aria-expanded="${isOpen}">
           <div class="sev-indicator ${escapeHtml(inc.severity)}"></div>
           <div class="incident-body">
             <h3>${escapeHtml(inc.title)}</h3>
@@ -291,8 +351,10 @@ function renderIncidents(incidents) {
             <div class="incident-meta">
               ${sevTag(inc.severity)}
               <span class="tag">${escapeHtml(inc.status.replace(/_/g, " "))}</span>
+              ${reasonerTag}
               <span class="tag">${inc.metric_anomalies?.length || 0} metric</span>
               <span class="tag">${inc.cost_anomalies?.length || 0} cost</span>
+              ${writes ? `<span class="tag warning">${writes} write${writes === 1 ? "" : "s"}</span>` : ""}
             </div>
           </div>
           <svg class="chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
@@ -300,7 +362,7 @@ function renderIncidents(incidents) {
         <div class="incident-detail">
           <div class="incident-detail-inner">
             <div class="rca-block">
-              <strong>Root cause hypothesis</strong>
+              <strong>Why this happened (RCA)</strong>
               ${escapeHtml(inc.root_cause_hypothesis || "—")}
             </div>
             ${actions ? `<div class="action-list">${actions}</div>` : ""}
@@ -311,12 +373,19 @@ function renderIncidents(incidents) {
     .join("");
 
   el.querySelectorAll("[data-toggle]").forEach((head) => {
-    head.addEventListener("click", () => {
+    const toggle = () => {
       const id = head.dataset.toggle;
       expandedIncident = expandedIncident === id ? null : id;
       renderIncidents(incidents);
       if (expandedIncident && incidents.find((i) => i.incident_id === id)?.agent_trace) {
         renderTrace(incidents.find((i) => i.incident_id === id).agent_trace);
+      }
+    };
+    head.addEventListener("click", toggle);
+    head.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
       }
     });
   });
@@ -327,13 +396,14 @@ function renderIncidents(incidents) {
 function renderApprovals(approvals) {
   const el = $("approvalList");
   const pending = approvals.filter((a) => a.status === "pending");
+  setAttentionBanner(pending.length);
 
   if (!pending.length) {
     el.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">✓</div>
-        <p>Queue clear</p>
-        <span>Write actions will appear here for approval</span>
+        <p>Nothing waiting on you</p>
+        <span>Write remediations land here. Until then, AWS is unchanged.</span>
       </div>`;
     return;
   }
@@ -342,9 +412,22 @@ function renderApprovals(approvals) {
     .map(
       (a, idx) => `
     <div class="approval-card" data-id="${escapeHtml(a.approval_id)}" style="animation-delay:${idx * 80}ms">
-      <h3>${escapeHtml(a.action.title)}</h3>
+      <div class="approval-card-head">
+        <h3>${escapeHtml(a.action.title)}</h3>
+        <span class="risk ${escapeHtml(a.action.risk)}">${escapeHtml(a.action.risk)}</span>
+      </div>
       <p>${escapeHtml(a.action.description)}</p>
-      <div class="approval-meta">tool: ${escapeHtml(a.action.tool_name)} · ${escapeHtml(a.action.estimated_impact || "impact TBD")}</div>
+      <dl class="approval-facts">
+        <div class="approval-fact">
+          <dt>If you approve</dt>
+          <dd>${escapeHtml(a.action.estimated_impact || "Impact not specified")}</dd>
+        </div>
+        <div class="approval-fact">
+          <dt>Rollback</dt>
+          <dd>${escapeHtml(a.action.rollback_plan || "Not specified")}</dd>
+        </div>
+      </dl>
+      <div class="approval-meta">tool: ${escapeHtml(a.action.tool_name)}</div>
       <div class="approval-actions">
         <button class="btn ok sm" data-decision="approved" data-id="${escapeHtml(a.approval_id)}">Approve & execute</button>
         <button class="btn danger sm" data-decision="rejected" data-id="${escapeHtml(a.approval_id)}">Reject</button>
@@ -423,6 +506,7 @@ async function runAnalysis() {
     $("pillMode").textContent = result.mode;
     latestIncident = result.incident;
     expandedIncident = result.incident.incident_id;
+    setReasonerChip(result.reasoner);
 
     const reasonerLabel = result.reasoner === "bedrock" ? "Bedrock" : "rules engine";
     const pending = result.approval_requests.length;
@@ -545,6 +629,7 @@ async function boot() {
   $("drawerBackdrop")?.addEventListener("click", closeDrawer);
   $("runBtn").addEventListener("click", runAnalysis);
   $("runBtnMobile")?.addEventListener("click", runAnalysis);
+  $("attnGoto")?.addEventListener("click", () => scrollToSection("approvals"));
   $("refreshBtn").addEventListener("click", async () => {
     setStatus("busy", "refreshing");
     addFeed("Dashboard refresh", "info");

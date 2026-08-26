@@ -10,12 +10,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&family=Syne:wght@600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link rel="stylesheet" href="/static/styles.css?v=7">
+<link rel="stylesheet" href="/static/styles.css?v=8">
 </head>
 <body>
 
+<a class="skip-link" href="#approvals">Skip to approval queue</a>
 <div class="mesh" aria-hidden="true"></div>
-<div class="scanline" aria-hidden="true"></div>
 
 <!-- Mobile drawer -->
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
@@ -46,9 +46,13 @@
     </div>
   </div>
   <div class="topbar-spacer"></div>
-  <div class="mode-chip" id="modeChip">
+  <div class="mode-chip" id="modeChip" title="Runtime mode">
     <span class="mode-dot"></span>
     <span id="pillMode">demo</span>
+  </div>
+  <div class="reasoner-chip" id="reasonerChip" data-kind="" title="Who drafted the last analysis">
+    <span class="reasoner-k">RCA</span>
+    <span id="reasonerLabel">Idle</span>
   </div>
   <div class="status-pill">
     <span class="pulse-dot" id="statusDot"></span>
@@ -106,10 +110,19 @@
 
   <!-- COMMAND -->
   <section class="section" id="command">
+    <div class="attn-banner hidden" id="attnBanner" role="status">
+      <div class="attn-copy">
+        <strong id="attnTitle">Writes waiting</strong>
+        <span>Nothing changes in AWS until you approve. Reads can run on their own.</span>
+      </div>
+      <button class="btn sm primary" type="button" id="attnGoto">Review queue</button>
+    </div>
+
     <div class="section-head">
       <div>
-        <p class="kicker">Command center</p>
-        <h1>Cloud estate under <em>autonomous</em> watch.</h1>
+        <p class="kicker">Operator console</p>
+        <h1>You approve every <em>write</em>.</h1>
+        <p class="lede">The agent collects signals and drafts an RCA. Remediation stays behind the HITL gate.</p>
       </div>
       <div class="head-actions">
         <button class="btn ghost" id="refreshBtn">
@@ -138,6 +151,7 @@
             <span class="orb-unit">score</span>
           </div>
         </div>
+        <p class="health-caption" id="healthCaption">Awaiting snapshot</p>
         <div class="health-bar">
           <div class="health-bar-fill" id="healthBar"></div>
         </div>
@@ -193,7 +207,7 @@
             <div class="pipe-icon">02</div>
             <div class="pipe-text">
               <strong>Reason</strong>
-              <span>Bedrock multi-signal RCA</span>
+              <span id="pipeReasonSub">Claude or rules engine</span>
             </div>
           </div>
           <div class="pipe-arrow">→</div>
@@ -250,7 +264,7 @@
     <div class="section-head compact">
       <div>
         <p class="kicker">Incidents</p>
-        <h2>Agent-generated reports</h2>
+        <h2>What the agent found</h2>
       </div>
       <span class="count-badge" id="incidentCount">0</span>
     </div>
@@ -258,7 +272,7 @@
       <div class="empty-state">
         <div class="empty-icon">◎</div>
         <p>No incidents yet</p>
-        <span>Run analysis to generate your first report</span>
+        <span>Run analysis to collect telemetry and draft an RCA</span>
       </div>
     </div>
   </section>
@@ -267,15 +281,15 @@
   <section class="section" id="approvals">
     <div class="section-head compact">
       <div>
-        <p class="kicker">Approval queue</p>
-        <h2>Human-in-the-loop gate</h2>
+        <p class="kicker">Your decision</p>
+        <h2>Approve or reject writes</h2>
       </div>
     </div>
     <div class="card-stack" id="approvalList">
       <div class="empty-state">
         <div class="empty-icon">✓</div>
-        <p>Queue clear</p>
-        <span>Write actions will appear here for approval</span>
+        <p>Nothing waiting on you</p>
+        <span>Write remediations land here. Until then, AWS is unchanged.</span>
       </div>
     </div>
   </section>
@@ -285,7 +299,7 @@
     <div class="section-head compact">
       <div>
         <p class="kicker">Execution trace</p>
-        <h2>Bedrock + action groups</h2>
+        <h2>How this run was built</h2>
       </div>
     </div>
     <div class="trace-panel glass" id="traceLog">
@@ -327,6 +341,6 @@
   </a>
 </nav>
 
-<script src="/static/app.js?v=7"></script>
+<script src="/static/app.js?v=8"></script>
 </body>
 </html>
