@@ -424,8 +424,16 @@ async function runAnalysis() {
     latestIncident = result.incident;
     expandedIncident = result.incident.incident_id;
 
-    addFeed(`Incident opened: ${result.incident.title}`, "warn");
-    addFeed(`${result.approval_requests.length} write actions queued for approval`, "info");
+    const reasonerLabel = result.reasoner === "bedrock" ? "Bedrock" : "rules engine";
+    const pending = result.approval_requests.length;
+    addFeed(`Reasoner: ${reasonerLabel}`, result.reasoner === "bedrock" ? "ok" : "info");
+    addFeed(`Incident opened: ${result.incident.title}`, pending ? "warn" : "ok");
+    addFeed(
+      pending
+        ? `${pending} write actions queued for approval`
+        : "No write remediations queued",
+      pending ? "info" : "muted"
+    );
 
     const all = await api("/v1/incidents");
     renderIncidents([
@@ -437,7 +445,11 @@ async function runAnalysis() {
     await loadApprovals();
 
     setStatus("live", "analysis complete");
-    toast(`Incident created · ${result.approval_requests.length} approvals pending`);
+    toast(
+      pending
+        ? `Incident created · ${reasonerLabel} · ${pending} approvals pending`
+        : `Analysis complete · ${reasonerLabel} · no write actions`
+    );
     scrollToSection("incidents");
   } catch (err) {
     console.error(err);

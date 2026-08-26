@@ -79,7 +79,9 @@ Respond ONLY with valid JSON matching this schema:
             "active_alarms": alarms,
         }
         if self._client is None:
-            return self._rules_engine(metric_anomalies, cost_anomalies, ta_flags, alarms)
+            result = self._rules_engine(metric_anomalies, cost_anomalies, ta_flags, alarms)
+            result["_reasoner"] = "rules_engine"
+            return result
 
         prompt = f"Analyze this AWS telemetry bundle and recommend actions:\n{json.dumps(payload, default=str)}"
         try:
@@ -92,10 +94,15 @@ Respond ONLY with valid JSON matching this schema:
             text = resp["output"]["message"]["content"][0]["text"]
             start = text.find("{")
             end = text.rfind("}") + 1
-            return json.loads(text[start:end])
+            result = json.loads(text[start:end])
+            result["_reasoner"] = "bedrock"
+            return result
         except Exception as exc:  # noqa: BLE001
             log.warning("bedrock_reasoning_failed", error=str(exc))
-            return self._rules_engine(metric_anomalies, cost_anomalies, ta_flags, alarms)
+            result = self._rules_engine(metric_anomalies, cost_anomalies, ta_flags, alarms)
+            result["_reasoner"] = "rules_engine"
+            result["_reasoner_error"] = str(exc)
+            return result
 
     def _rules_engine(
         self,
@@ -121,6 +128,26 @@ Respond ONLY with valid JSON matching this schema:
                 "rollback_plan": "N/A — read-only",
             }
         ]
+
+        active_alarms = [a for a in alarms if a.get("state") == "ALARM"]
+        summary_parts = [
+            f"{len(metric_anomalies)} metric anomalies",
+            f"{len(cost_anomalies)} cost anomalies",
+            f"{len(active_alarms)} active alarms",
+        ]
+
+        if not metric_anomalies and not cost_anomalies and not active_alarms:
+            return {
+                "title": "No material cloud anomalies in the lookback window",
+                "summary": "; ".join(summary_parts),
+                "root_cause_hypothesis": (
+                    "Telemetry is quiet: no CloudWatch alarms above threshold and no Cost Explorer "
+                    "service spend deviation versus the prior equivalent window. Write remediations "
+                    "are not warranted."
+                ),
+                "severity": "info",
+                "recommended_actions": actions,
+            }
 
         ec2_cost = next((c for c in cost_anomalies if "EC2" in c.service), None)
         cpu_spike = next((m for m in metric_anomalies if m.metric_name == "CPUUtilization"), None)
@@ -188,11 +215,6 @@ Respond ONLY with valid JSON matching this schema:
         elif cpu_spike:
             title = "API cluster CPU saturation"
 
-        summary_parts = [
-            f"{len(metric_anomalies)} metric anomalies",
-            f"{len(cost_anomalies)} cost anomalies",
-            f"{len([a for a in alarms if a.get('state') == 'ALARM'])} active alarms",
-        ]
         hypothesis = (
             "Likely combination of traffic surge on API tier (CPU spike) and unchecked "
             "instance sprawl driving EC2 cost overrun. Lambda error burst may indicate "
@@ -200,6 +222,13 @@ Respond ONLY with valid JSON matching this schema:
         )
         if not metric_anomalies and cost_anomalies:
             hypothesis = "Cost drift without matching metric anomalies — investigate orphaned resources and RI coverage."
+        elif cpu_spike or lambda_errors:
+            pass
+        elif metric_anomalies or cost_anomalies:
+            hypothesis = (
+                "Anomalies detected across telemetry, but no single dominant CPU or Lambda signature. "
+                "Investigate the highest-deviation services first."
+            )
 
         return {
             "title": title,
@@ -221,7 +250,7 @@ class SREAgentOrchestrator:
         self.trusted_advisor = TrustedAdvisorTool(settings)
         self.reasoner = BedrockReasoner(settings)
 
-    def run_analysis(self, req: RunAnalysisRequest) -> tuple[str, IncidentReport]:
+    def run_analysis(self, req: RunAnalysisRequest) -> tuple[str, IncidentReport, str]:
         run_id = f"run_{uuid.uuid4().hex[:10]}"
         trace: list[AgentTraceStep] = []
         t0 = time.perf_counter()
@@ -272,15 +301,20 @@ class SREAgentOrchestrator:
                 )
             )
 
-        # Phase 2 — Bedrock reasoning
+        # Phase 2 — reason (Bedrock, with rules-engine fallback)
         t4 = time.perf_counter()
         analysis = self.reasoner.analyze(metric_anomalies, cost_anomalies, ta_flags, alarms)
+        reasoner = str(analysis.pop("_reasoner", "rules_engine"))
+        analysis.pop("_reasoner_error", None)
         trace.append(
             AgentTraceStep(
                 step=4,
-                phase="bedrock_reasoning",
-                summary=f"Generated {len(analysis.get('recommended_actions', []))} recommended actions",
-                tool_calls=["bedrock.converse"],
+                phase="bedrock_reasoning" if reasoner == "bedrock" else "rules_engine",
+                summary=(
+                    f"Generated {len(analysis.get('recommended_actions', []))} recommended actions"
+                    f" via {reasoner}"
+                ),
+                tool_calls=["bedrock.converse"] if reasoner == "bedrock" else ["reasoner.rules_engine"],
                 duration_ms=int((time.perf_counter() - t4) * 1000),
             )
         )
@@ -327,7 +361,7 @@ class SREAgentOrchestrator:
             root_cause_hypothesis=analysis.get("root_cause_hypothesis", ""),
             recommended_actions=actions,
             agent_trace=trace,
-            tags=["bedrock-agent", "auto-detected", req.scope],
+            tags=["auto-detected", req.scope, f"reasoner:{reasoner}"],
         )
 
         trace.append(
@@ -341,4 +375,4 @@ class SREAgentOrchestrator:
         )
         incident.agent_trace = trace
         self.store.save_incident(incident)
-        return run_id, incident
+        return run_id, incident, reasoner

@@ -39,7 +39,7 @@ Save the `AccessKeyId` and `SecretAccessKey` from the output.
 
 | Service | Requirement |
 |---------|-------------|
-| **Bedrock** | Use Claude Sonnet 4.6 via inference profile `us.anthropic.claude-sonnet-4-6` (us-east-1). Claude 3.5 Sonnet is retired. |
+| **Bedrock** | Use Claude Sonnet 4.6 via inference profile `us.anthropic.claude-sonnet-4-6` (us-east-1). Claude 3.5 Sonnet is retired. First-time Anthropic use requires submitting use-case details in **Bedrock → Model catalog → Anthropic model → Submit use case details**. A portfolio/GitHub URL is enough. Access typically lands within ~15 minutes; until then the agent falls back to the rules engine. |
 | **Cost Explorer** | Enable in Billing → Cost Explorer (takes ~24h first time) |
 | **Trusted Advisor** | Requires Business or Enterprise Support plan |
 | **DynamoDB** | Optional — deploy CDK stack for persistent incidents |
@@ -111,6 +111,7 @@ Or uncomment `domains` in `render.yaml` and redeploy the Blueprint.
 |-------|-----|
 | Still shows `demo` after adding creds | Set `DEMO_MODE=false` explicitly |
 | Bedrock access denied | Enable model access in Bedrock console for us-east-1 |
+| `Model use case details have not been submitted` | Fill the Anthropic first-time-use form in Bedrock (see table above), then wait ~15 min |
 | Cost Explorer empty | Enable Cost Explorer in AWS Billing; wait 24h |
 | Free tier spin-down | First request after idle may take ~30s (cold start) |
 | Approvals lost on restart | Set `USE_LOCAL_STORE=false` + deploy DynamoDB tables |

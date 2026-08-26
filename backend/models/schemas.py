@@ -119,6 +119,7 @@ class RunAnalysisResponse(BaseModel):
     incident: IncidentReport
     approval_requests: list[ApprovalRequest] = Field(default_factory=list)
     mode: str
+    reasoner: str = "rules_engine"
 
 
 class ApprovalDecisionRequest(BaseModel):

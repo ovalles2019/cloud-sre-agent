@@ -102,10 +102,16 @@ def dashboard() -> DashboardSnapshot:
 
 @app.post("/v1/agent/analyze", response_model=RunAnalysisResponse)
 def analyze(req: RunAnalysisRequest) -> RunAnalysisResponse:
-    run_id, incident = orchestrator.run_analysis(req)
+    run_id, incident, reasoner = orchestrator.run_analysis(req)
     approvals = approval_service.create_approval_requests(incident)
     mode = "demo" if settings.demo_mode else "live"
-    return RunAnalysisResponse(run_id=run_id, incident=incident, approval_requests=approvals, mode=mode)
+    return RunAnalysisResponse(
+        run_id=run_id,
+        incident=incident,
+        approval_requests=approvals,
+        mode=mode,
+        reasoner=reasoner,
+    )
 
 
 @app.get("/v1/incidents", response_model=list[IncidentReport])
@@ -149,7 +155,7 @@ if WEB.exists():
 
     @app.get("/")
     def index() -> FileResponse:
-        return FileResponse(WEB / "index.html")
+        return FileResponse(WEB / "index.html", headers={"Cache-Control": "no-cache"})
 
     @app.get("/favicon.svg")
     def favicon() -> FileResponse:
